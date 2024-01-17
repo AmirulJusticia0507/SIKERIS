@@ -1,0 +1,61 @@
+<?php
+session_start();
+
+if (!isset($_SESSION['userid'])) {
+    header('Location: login.php');
+    exit;
+}
+
+$server = "192.168.1.184";
+// $server = "localhost";
+$username = "root";
+$password = "";
+$database = "db_mobile_collection";
+
+$connectionServernew = new mysqli($server, $username, $password, $database);
+
+if ($connectionServernew->connect_error) {
+    $hasil['STATUS'] = "000199";
+    die(json_encode($hasil));
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Ambil data dari formulir
+    $entryId = isset($_POST["entryId"]) ? $_POST["entryId"] : '';  // Set a default value if entryId is not provided
+    $namaNasabah = isset($_POST["namaNasabah"]) ? $_POST["namaNasabah"] : '';
+    $noSertifikat = isset($_POST["no_Sertifikat"]) ? $_POST["no_Sertifikat"] : '';
+    $pemilikSertifikat = isset($_POST["pemilikSertifikat"]) ? $_POST["pemilikSertifikat"] : '';
+
+    // Proses upload file PDF
+    $uploadDirectory = "uploads/pdf/";  // Ganti dengan direktori yang sesuai
+
+    // Loop through each uploaded file
+    foreach ($_FILES["scanSertifikatModal"]["tmp_name"] as $key => $tmp_name) {
+        $pdfFileName = basename($_FILES["scanSertifikatModal"]["name"][$key]);
+        $pdfFilePath = $uploadDirectory . $pdfFileName;
+        $pdfFileType = pathinfo($pdfFilePath, PATHINFO_EXTENSION);
+
+        // Memeriksa apakah file adalah file PDF
+        if ($pdfFileType != "pdf") {
+            echo "File harus berupa PDF.";
+        } else {
+            // Pindahkan file PDF ke direktori upload
+            if (move_uploaded_file($_FILES["scanSertifikatModal"]["tmp_name"][$key], $pdfFilePath)) {
+                // Masukkan data ke dalam tabel
+                // $query = "INSERT INTO db_mobile_collection.entry_pengikatan_berkas (entryId, namaNasabah, noSertifikat, pemilikSertifikat, scanSertifikatPath) VALUES ('$entryId', '$namaNasabah', '$noSertifikat', '$pemilikSertifikat', '$pdfFilePath')";
+                $query = "INSERT INTO db_mobile_collection.entry_pengikatan_berkas (namaNasabah, noSertifikat, scanSertifikatPath) VALUES ('$namaNasabah', '$noSertifikat', '$pdfFilePath')";
+
+                if ($connectionServernew->query($query) === TRUE) {
+                    echo "Data berhasil dimasukkan.";
+                    header("Location: progesspengikatan.php?page=progesspengikatan");
+                    exit;
+                } else {
+                    echo "Error: " . $query . "<br>" . $connectionServernew->error;
+                }
+            } else {
+                echo "Terjadi kesalahan saat mengunggah file.";
+            }
+        }
+    }
+}
+?>
